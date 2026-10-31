@@ -255,16 +255,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Workflows Preview */}
+      {/* Workflows & Batch Preview */}
       <section id="workflows" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="p-8 sm:p-10 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <div className="max-w-xl">
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Visual Pipelines & Chaining
-            </h3>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Chain multiple operations without repeated download & re-upload cycles (e.g. Unlock → Merge → Compress → Sign).
-            </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-8 sm:p-10 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 mb-3">
+                Phase B Delivered
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Batch & Folder Processing
+              </h3>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Drag in 100+ files or entire folders. Bounded concurrency protects your device memory, and results download as a single ZIP archive.
+              </p>
+            </div>
+            <div className="mt-6">
+              <Link
+                href="/batch"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition"
+              >
+                <span>Open Batch Studio</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="p-8 sm:p-10 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 mb-3">
+                In-Memory Chaining
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Seamless Tool Chaining & History
+              </h3>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Send results directly into the next tool (Unlock → Merge → Compress → Sign) with zero re-downloading. Includes timeline audit and full undo/redo.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-3 text-xs text-slate-400">
+              <span className="font-mono bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded">Ctrl+Z / Ctrl+Y</span>
+              <span>Supported across all tools</span>
+            </div>
           </div>
         </div>
       </section>

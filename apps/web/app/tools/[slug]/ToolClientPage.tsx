@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Play, RefreshCw, FileText, CheckCircle, ShieldCheck, HelpCircle } from 'lucide-react';
@@ -14,7 +14,9 @@ import { OrganizeGrid } from '@/components/OrganizeGrid';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ResultSummary } from '@/components/ResultSummary';
 import { ErrorPanel } from '@/components/ErrorPanel';
+import { WorkspaceBar } from '@/components/WorkspaceBar';
 import { executeTool } from '@/lib/worker-client';
+import { workspaceManager } from '@/lib/workspace-store';
 
 export function ToolClientPage({ slug }: { slug: string }) {
   const tool = getToolBySlug(slug);
@@ -33,6 +35,20 @@ export function ToolClientPage({ slug }: { slug: string }) {
   const [error, setError] = useState<Error | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Pre-load from workspace if chained
+  useEffect(() => {
+    workspaceManager.init().then(() => {
+      const active = workspaceManager.getActiveFiles();
+      if (active.length > 0 && files.length === 0 && !result) {
+        if (tool.inputs.max === 1) {
+          handleFilesSelected([active[0]]);
+        } else {
+          handleFilesSelected(active);
+        }
+      }
+    });
+  }, [tool.id]);
 
   // When files are selected
   const handleFilesSelected = async (newFiles: WorkspaceFile[]) => {
@@ -95,6 +111,15 @@ export function ToolClientPage({ slug }: { slug: string }) {
           if (step) setStepText(step);
         },
       });
+
+      // Record to workspace history & lineage
+      await workspaceManager.recordToolOperation(
+        tool.id,
+        tool.title,
+        files,
+        toolResult.files,
+        toolResult.summary
+      );
 
       setResult(toolResult);
     } catch (err: any) {
@@ -354,6 +379,8 @@ export function ToolClientPage({ slug }: { slug: string }) {
           </div>
         </div>
       </section>
+
+      <WorkspaceBar />
     </div>
   );
 }
