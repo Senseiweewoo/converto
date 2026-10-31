@@ -20,6 +20,12 @@ export async function safeLoadPdf(
       ignoreEncryption: false,
       ...options,
     });
+    // Validate that document has a parseable catalog and page tree
+    const count = doc.getPageCount();
+    if (count === 0 && data.length < 100) {
+      // Catch empty or malformed truncated fragments
+      throw new CorruptPdfError('Document contains no valid page tree.');
+    }
     return doc;
   } catch (err: unknown) {
     const errMsg = (err instanceof Error ? err.message : String(err)).toLowerCase();
