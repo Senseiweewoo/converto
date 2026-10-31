@@ -124,3 +124,93 @@ export const smartFixSettingsSchema = z.object({
 });
 export type SmartFixSettings = z.infer<typeof smartFixSettingsSchema>;
 
+// Expanded Operations Schemas
+export const removePagesSettingsSchema = z.object({
+  pagesToRemove: z.string().default('2'),
+});
+export type RemovePagesSettings = z.infer<typeof removePagesSettingsSchema>;
+
+export const extractPagesSettingsSchema = z.object({
+  pagesToExtract: z.string().default('1'),
+  separateFiles: z.boolean().default(false),
+});
+export type ExtractPagesSettings = z.infer<typeof extractPagesSettingsSchema>;
+
+export const cropSettingsSchema = z.object({
+  topMargin: z.number().default(20),
+  bottomMargin: z.number().default(20),
+  leftMargin: z.number().default(20),
+  rightMargin: z.number().default(20),
+});
+export type CropSettings = z.infer<typeof cropSettingsSchema>;
+
+export const repairSettingsSchema = z.object({
+  forceReconstruct: z.boolean().default(true),
+});
+export type RepairSettings = z.infer<typeof repairSettingsSchema>;
+
+export const pdfToPdfaSettingsSchema = z.object({
+  conformance: z.enum(['PDF/A-1b', 'PDF/A-2b']).default('PDF/A-1b'),
+});
+export type PdfToPdfaSettings = z.infer<typeof pdfToPdfaSettingsSchema>;
+
+export const pdfToMarkdownSettingsSchema = z.object({
+  preserveHeaders: z.boolean().default(true),
+});
+export type PdfToMarkdownSettings = z.infer<typeof pdfToMarkdownSettingsSchema>;
+
+export const pdfToWordSettingsSchema = z.object({
+  includeFormatting: z.boolean().default(true),
+});
+export type PdfToWordSettings = z.infer<typeof pdfToWordSettingsSchema>;
+
+export const pdfToExcelSettingsSchema = z.object({
+  detectTables: z.boolean().default(true),
+});
+export type PdfToExcelSettings = z.infer<typeof pdfToExcelSettingsSchema>;
+
+export const pdfToPowerpointSettingsSchema = z.object({
+  slidesPerPage: z.number().default(1),
+});
+export type PdfToPowerpointSettings = z.infer<typeof pdfToPowerpointSettingsSchema>;
+
+export const htmlToPdfSettingsSchema = z.object({
+  url: z.string().default(''),
+  htmlContent: z.string().default(''),
+});
+export type HtmlToPdfSettings = z.infer<typeof htmlToPdfSettingsSchema>;
+
+export const editPdfSettingsSchema = z.object({
+  text: z.string().default('Approved'),
+  colorHex: z.string().default('#059669'),
+});
+export type EditPdfSettings = z.infer<typeof editPdfSettingsSchema>;
+
+export const deepSanitizerSettingsSchema = z.object({
+  wipeMetadata: z.boolean().default(true),
+  zeroTimestamps: z.boolean().default(true),
+});
+export type DeepSanitizerSettings = z.infer<typeof deepSanitizerSettingsSchema>;
+
+export const aiSummarizerSettingsSchema = z.object({
+  length: z.enum(['short', 'medium', 'detailed']).default('medium'),
+  format: z.enum(['bullet-points', 'executive-summary']).default('bullet-points'),
+});
+export type AiSummarizerSettings = z.infer<typeof aiSummarizerSettingsSchema>;
+
+export const translatePdfSettingsSchema = z.object({
+  targetLanguage: z.string().default('Spanish'),
+  preserveFormatting: z.boolean().default(true),
+});
+export type TranslatePdfSettings = z.infer<typeof translatePdfSettingsSchema>;
+
+export const textToSpeechSettingsSchema = z.object({
+  rate: z.number().default(1.0),
+  pitch: z.number().default(1.0),
+});
+export type TextToSpeechSettings = z.infer<typeof textToSpeechSettingsSchema>;
+
+export const bionicReaderSettingsSchema = z.object({
+  fixationStrength: z.enum(['low', 'medium', 'high']).default('medium'),
+});
+export type BionicReaderSettings = z.infer<typeof bionicReaderSettingsSchema>;

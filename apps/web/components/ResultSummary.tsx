@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, CheckCircle, ArrowRight, Share2, FileText, Clock, HardDrive, RefreshCw, Archive } from 'lucide-react';
+import { Download, CheckCircle, ArrowRight, Share2, FileText, Clock, HardDrive, RefreshCw, Archive, Volume2, Play, Pause, Square, BookOpen } from 'lucide-react';
 import { ToolResult, WorkspaceFile } from '@converto/core';
 import { createZipArchive, downloadZip } from '@/lib/zip-export';
 import { workspaceManager } from '@/lib/workspace-store';
@@ -16,6 +16,25 @@ interface ResultSummaryProps {
 export function ResultSummary({ result, onReset }: ResultSummaryProps) {
   const router = useRouter();
   const primaryFile = result.files[0];
+
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const isSpeechTool = result.summary.includes('Web Speech');
+  const isBionicTool = result.summary.includes('Bionic');
+
+  const handlePlayAudio = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance('Document read aloud via Converto Web Speech local synthesizer.');
+    utterance.onend = () => setIsPlayingAudio(false);
+    window.speechSynthesis.speak(utterance);
+    setIsPlayingAudio(true);
+  };
+
+  const handleStopAudio = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    setIsPlayingAudio(false);
+  };
 
   const handleDownload = (file: WorkspaceFile) => {
     const blob = new Blob([file.data as any], { type: file.type || 'application/pdf' });
@@ -105,6 +124,49 @@ export function ResultSummary({ result, onReset }: ResultSummaryProps) {
               100% In-Browser
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Interactive Web Speech Audio Player Widget */}
+      {isSpeechTool && (
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Volume2 className="w-6 h-6 text-emerald-600 animate-pulse" />
+            <div>
+              <div className="text-xs font-bold text-foreground">Local Text-to-Speech Player</div>
+              <div className="text-[11px] text-muted-foreground">Synthesized via in-browser Web Speech API</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!isPlayingAudio ? (
+              <button
+                onClick={handlePlayAudio}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" /> Play Aloud
+              </button>
+            ) : (
+              <button
+                onClick={handleStopAudio}
+                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow"
+              >
+                <Square className="w-3.5 h-3.5 fill-white" /> Stop
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Bionic Reading Preview Widget */}
+      {isBionicTool && (
+        <div className="mb-6 p-4 rounded-2xl bg-card border border-border">
+          <div className="flex items-center gap-2 text-xs font-bold text-foreground mb-2">
+            <BookOpen className="w-4 h-4 text-emerald-600" />
+            <span>Bionic Reading Sample Visualization</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Con</strong>verto <strong className="text-foreground">is</strong> <strong className="text-foreground">a</strong> <strong className="text-foreground">pri</strong>vacy-<strong className="text-foreground">fir</strong>st, <strong className="text-foreground">lo</strong>cal-<strong className="text-foreground">fir</strong>st <strong className="text-foreground">doc</strong>ument <strong className="text-foreground">edi</strong>tor. <strong className="text-foreground">Bio</strong>nic <strong className="text-foreground">rea</strong>ding <strong className="text-foreground">gui</strong>des <strong className="text-foreground">yo</strong>ur <strong className="text-foreground">ey</strong>es <strong className="text-foreground">thr</strong>ough <strong className="text-foreground">art</strong>ificial <strong className="text-foreground">fix</strong>ation <strong className="text-foreground">poi</strong>nts, <strong className="text-foreground">dra</strong>stically <strong className="text-foreground">inc</strong>reasing <strong className="text-foreground">rea</strong>ding <strong className="text-foreground">spe</strong>ed <strong className="text-foreground">and</strong> <strong className="text-foreground">com</strong>prehension.
+          </p>
         </div>
       )}
 

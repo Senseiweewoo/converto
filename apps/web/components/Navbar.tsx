@@ -11,13 +11,17 @@ import {
   CreditCard, 
   Code2, 
   Globe, 
-  ChevronDown 
+  ChevronDown,
+  Cloud
 } from 'lucide-react';
 import { PrivacyProofModal } from './PrivacyProofModal';
+import { CloudSyncModal } from './CloudSyncModal';
+import { workspaceManager } from '@/lib/workspace-store';
 import { useI18n, SUPPORTED_LANGUAGES, SupportedLanguage, initializeI18n } from '@/lib/i18n';
 
 export function Navbar() {
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isCloudOpen, setIsCloudOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
 
@@ -148,6 +152,16 @@ export function Navbar() {
               )}
             </div>
 
+            {/* Cloud Storage Sync */}
+            <button
+              onClick={() => setIsCloudOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 rounded-xl border border-border bg-card hover:bg-muted transition"
+              title="Import or export to Google Drive / Dropbox"
+            >
+              <Cloud className="w-3.5 h-3.5 text-blue-500" />
+              <span className="hidden sm:inline">Cloud Sync</span>
+            </button>
+
             {/* Dark / Light Toggle */}
             <button
               onClick={toggleTheme}
@@ -162,6 +176,15 @@ export function Navbar() {
 
       {/* Live Privacy Auditor Modal */}
       <PrivacyProofModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+
+      {/* Cloud Storage Sync Modal */}
+      <CloudSyncModal
+        isOpen={isCloudOpen}
+        onClose={() => setIsCloudOpen(false)}
+        onImportFile={(file) => {
+          workspaceManager.setActiveFiles([file]);
+        }}
+      />
     </>
   );
 }

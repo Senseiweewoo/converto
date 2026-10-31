@@ -526,6 +526,288 @@ export function ToolSettings({ toolId, settings, onChange }: ToolSettingsProps) 
         </div>
       );
 
+    case 'remove-pages':
+      return (
+        <div className="space-y-3">
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Pages to Remove (e.g. 2, 4, 6)
+          </label>
+          <input
+            type="text"
+            value={settings.pagesToRemove || '2'}
+            onChange={(e) => update('pagesToRemove', e.target.value)}
+            placeholder="2, 4"
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          />
+        </div>
+      );
+
+    case 'extract-pages':
+      return (
+        <div className="space-y-3">
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Pages to Extract (e.g. 1, 3, 5)
+          </label>
+          <input
+            type="text"
+            value={settings.pagesToExtract || '1'}
+            onChange={(e) => update('pagesToExtract', e.target.value)}
+            placeholder="1, 3"
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          />
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="separateFiles"
+              checked={!!settings.separateFiles}
+              onChange={(e) => update('separateFiles', e.target.checked)}
+              className="rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="separateFiles" className="text-xs text-slate-600 dark:text-slate-400">
+              Extract each page into a separate individual PDF file
+            </label>
+          </div>
+        </div>
+      );
+
+    case 'crop-pdf':
+      return (
+        <div className="space-y-3">
+          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Crop Margins (Points)
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label className="text-[11px] text-muted-foreground">Top</label>
+              <input
+                type="number"
+                value={settings.topMargin ?? 20}
+                onChange={(e) => update('topMargin', parseInt(e.target.value, 10))}
+                className="w-full px-2 py-1 rounded-lg border border-border bg-card"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground">Bottom</label>
+              <input
+                type="number"
+                value={settings.bottomMargin ?? 20}
+                onChange={(e) => update('bottomMargin', parseInt(e.target.value, 10))}
+                className="w-full px-2 py-1 rounded-lg border border-border bg-card"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground">Left</label>
+              <input
+                type="number"
+                value={settings.leftMargin ?? 20}
+                onChange={(e) => update('leftMargin', parseInt(e.target.value, 10))}
+                className="w-full px-2 py-1 rounded-lg border border-border bg-card"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground">Right</label>
+              <input
+                type="number"
+                value={settings.rightMargin ?? 20}
+                onChange={(e) => update('rightMargin', parseInt(e.target.value, 10))}
+                className="w-full px-2 py-1 rounded-lg border border-border bg-card"
+              />
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'repair-pdf':
+      return (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-200">
+          Reconstructs missing %%EOF trailer markers, repairs unreadable xref tables, and extracts uncorrupted stream pages into a normalized PDF.
+        </div>
+      );
+
+    case 'deep-sanitizer':
+      return (
+        <div className="space-y-2">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+            Deep Sanitizer removes hidden tracking dots, EXIF camera tags, author software fingerprints, and zeroes timestamps.
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="wipeMetadata"
+              checked={settings.wipeMetadata !== false}
+              onChange={(e) => update('wipeMetadata', e.target.checked)}
+              className="rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="wipeMetadata" className="text-xs text-slate-700 dark:text-slate-300">
+              Wipe all author, title, and software tags
+            </label>
+          </div>
+        </div>
+      );
+
+    case 'pdf-to-pdfa':
+      return (
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Archival Conformance Standard
+          </label>
+          <select
+            value={settings.conformance || 'PDF/A-1b'}
+            onChange={(e) => update('conformance', e.target.value)}
+            className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card"
+          >
+            <option value="PDF/A-1b">PDF/A-1b (Visual reproduction archiving)</option>
+            <option value="PDF/A-2b">PDF/A-2b (Modern ISO 19005-2 with transparency)</option>
+          </select>
+        </div>
+      );
+
+    case 'html-to-pdf':
+      return (
+        <div className="space-y-3">
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Webpage URL or Raw HTML
+          </label>
+          <input
+            type="text"
+            value={settings.url || ''}
+            onChange={(e) => update('url', e.target.value)}
+            placeholder="https://example.com"
+            className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card"
+          />
+          <textarea
+            value={settings.htmlContent || ''}
+            onChange={(e) => update('htmlContent', e.target.value)}
+            placeholder="<h1>Or paste HTML code directly...</h1>"
+            rows={3}
+            className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card font-mono"
+          />
+        </div>
+      );
+
+    case 'edit-pdf':
+      return (
+        <div className="space-y-3">
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Overlay Annotation Text
+          </label>
+          <input
+            type="text"
+            value={settings.text || 'Approved'}
+            onChange={(e) => update('text', e.target.value)}
+            className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card"
+          />
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground">Stamp Color:</label>
+            <input
+              type="color"
+              value={settings.colorHex || '#059669'}
+              onChange={(e) => update('colorHex', e.target.value)}
+              className="w-8 h-8 rounded border border-border p-0.5"
+            />
+          </div>
+        </div>
+      );
+
+    case 'ai-summarizer':
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Summary Length</label>
+            <div className="grid grid-cols-3 gap-1.5 mt-1">
+              {(['short', 'medium', 'detailed'] as const).map((len) => (
+                <button
+                  key={len}
+                  type="button"
+                  onClick={() => update('length', len)}
+                  className={`py-1.5 px-2 text-xs rounded-lg font-medium border ${
+                    settings.length === len
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-card border-border text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {len.charAt(0).toUpperCase() + len.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Format</label>
+            <select
+              value={settings.format || 'bullet-points'}
+              onChange={(e) => update('format', e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card mt-1"
+            >
+              <option value="bullet-points">Bullet Points (Action Items)</option>
+              <option value="executive-summary">Executive Narrative Paragraph</option>
+            </select>
+          </div>
+        </div>
+      );
+
+    case 'translate-pdf':
+      return (
+        <div className="space-y-3">
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target Language</label>
+          <select
+            value={settings.targetLanguage || 'Spanish'}
+            onChange={(e) => update('targetLanguage', e.target.value)}
+            className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card"
+          >
+            <option value="Spanish">Spanish (Español)</option>
+            <option value="French">French (Français)</option>
+            <option value="German">German (Deutsch)</option>
+            <option value="Japanese">Japanese (日本語)</option>
+            <option value="Arabic">Arabic (العربية)</option>
+            <option value="Portuguese">Portuguese (Português)</option>
+            <option value="Filipino">Filipino (Tagalog)</option>
+            <option value="Hindi">Hindi (हिन्दी)</option>
+          </select>
+        </div>
+      );
+
+    case 'text-to-speech':
+      return (
+        <div className="space-y-3">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300">
+            Local browser Web Speech API plays document audio aloud with word highlighting.
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Reading Speed ({settings.rate || 1.0}x)</label>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={settings.rate || 1.0}
+              onChange={(e) => update('rate', parseFloat(e.target.value))}
+              className="w-full accent-emerald-600"
+            />
+          </div>
+        </div>
+      );
+
+    case 'bionic-reader':
+      return (
+        <div className="space-y-3">
+          <div className="p-3 bg-card border border-border rounded-xl text-xs text-muted-foreground">
+            Bionic reading bolds the beginning of each word (<strong className="text-foreground">Con</strong>verto <strong className="text-foreground">hel</strong>ps <strong className="text-foreground">you</strong> <strong className="text-foreground">re</strong>ad <strong className="text-foreground">fas</strong>ter).
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-foreground">Fixation Strength</label>
+            <select
+              value={settings.fixationStrength || 'medium'}
+              onChange={(e) => update('fixationStrength', e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card mt-1"
+            >
+              <option value="low">Subtle (First letter only)</option>
+              <option value="medium">Balanced (Standard bionic fixation)</option>
+              <option value="high">Strong (Half of word anchor)</option>
+            </select>
+          </div>
+        </div>
+      );
+
     default:
       return null;
   }
