@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@converto/core": ["./packages/core/src/index.ts"],
+      "@converto/tools": ["./packages/tools/src/index.ts"]
+    }
+  }
+}
