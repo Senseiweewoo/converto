@@ -374,6 +374,158 @@ export function ToolSettings({ toolId, settings, onChange }: ToolSettingsProps) 
         </div>
       );
 
+    case 'compress-to-target':
+      return (
+        <div className="space-y-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Target Size Presets
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: 'government-form', label: 'Govt Form (200 KB)' },
+              { id: 'visa-upload', label: 'Visa Portal (300 KB)' },
+              { id: 'job-portal', label: 'Job Portal (500 KB)' },
+              { id: 'email-attachment', label: 'Email (2 MB)' },
+              { id: 'whatsapp', label: 'WhatsApp (16 MB)' },
+              { id: 'custom', label: 'Custom Target' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => update('preset', p.id)}
+                className={`p-2.5 rounded-xl text-left border text-xs font-semibold transition ${
+                  settings.preset === p.id
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {settings.preset === 'custom' && (
+            <div>
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Target Size (KB)
+              </label>
+              <input
+                type="number"
+                min={50}
+                max={50000}
+                value={settings.customTargetKb || 500}
+                onChange={(e) => update('customTargetKb', parseInt(e.target.value, 10) || 500)}
+                className="w-full px-3.5 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+              />
+            </div>
+          )}
+        </div>
+      );
+
+    case 'sign-pdf':
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+              Signature Text
+            </label>
+            <input
+              type="text"
+              value={settings.typedSignatureText || ''}
+              onChange={(e) => update('typedSignatureText', e.target.value)}
+              placeholder="Your Full Name..."
+              className="w-full px-3.5 py-2 rounded-xl text-sm italic font-serif border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Placement Mode
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'sign-all-pages', label: 'Sign Every Page' },
+                { id: 'initial-every-page', label: 'Initial Every Page' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => update('placementMode', m.id)}
+                  className={`p-2.5 rounded-xl text-xs font-semibold border transition ${
+                    settings.placementMode === m.id
+                      ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-300'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'redact-pdf':
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+              Redaction Stamp Label
+            </label>
+            <input
+              type="text"
+              value={settings.redactLabel || ''}
+              onChange={(e) => update('redactLabel', e.target.value)}
+              placeholder="[CONFIDENTIAL REDACTED]"
+              className="w-full px-3.5 py-2 rounded-xl text-sm font-mono border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="redactMeta"
+              checked={settings.scrubMetadata !== false}
+              onChange={(e) => update('scrubMetadata', e.target.checked)}
+              className="rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="redactMeta" className="text-xs text-slate-600 dark:text-slate-400">
+              Permanently wipe author, GPS, annotations & revision history
+            </label>
+          </div>
+        </div>
+      );
+
+    case 'forms-pdf':
+      return (
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+            Form fields are automatically detected and prepared for one-click flattening into permanent read-only vector content.
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="flattenForm"
+              checked={settings.flatten !== false}
+              onChange={(e) => update('flatten', e.target.checked)}
+              className="rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="flattenForm" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Flatten form fields (bakes values permanently into pages)
+            </label>
+          </div>
+        </div>
+      );
+
+    case 'smart-fix':
+      return (
+        <div className="space-y-3">
+          <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200">
+            Smart Fix analyzes document rotation, blank pages, and stream structures, then executes an automated multi-step healing sequence.
+          </div>
+        </div>
+      );
+
     default:
       return null;
   }

@@ -94,3 +94,33 @@ export const organizeSettingsSchema = z.object({
     .default([]),
 });
 export type OrganizeSettings = z.infer<typeof organizeSettingsSchema>;
+
+export const compressToTargetSettingsSchema = z.object({
+  preset: z.enum(['job-portal', 'government-form', 'visa-upload', 'email-attachment', 'whatsapp', 'custom']).default('job-portal'),
+  customTargetKb: z.number().min(50).max(50000).default(500),
+});
+export type CompressToTargetSettings = z.infer<typeof compressToTargetSettingsSchema>;
+
+export const signPdfSettingsSchema = z.object({
+  typedSignatureText: z.string().default('John Doe'),
+  placementMode: z.enum(['coordinates', 'sign-all-pages', 'initial-every-page']).default('sign-all-pages'),
+});
+export type SignPdfSettings = z.infer<typeof signPdfSettingsSchema>;
+
+export const redactPdfSettingsSchema = z.object({
+  redactLabel: z.string().default('[REDACTED]'),
+  color: z.enum(['black', 'white']).default('black'),
+  scrubMetadata: z.boolean().default(true),
+});
+export type RedactPdfSettings = z.infer<typeof redactPdfSettingsSchema>;
+
+export const formsPdfSettingsSchema = z.object({
+  flatten: z.boolean().default(true),
+});
+export type FormsPdfSettings = z.infer<typeof formsPdfSettingsSchema>;
+
+export const smartFixSettingsSchema = z.object({
+  autoFixEverything: z.boolean().default(true),
+});
+export type SmartFixSettings = z.infer<typeof smartFixSettingsSchema>;
+
