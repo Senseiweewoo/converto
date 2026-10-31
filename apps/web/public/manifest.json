@@ -1,0 +1,19 @@
+{
+  "name": "Converto — Private PDF Toolkit",
+  "short_name": "Converto",
+  "description": "Convert, edit and fix any PDF, privately. 100% in-browser WebAssembly and Web Workers.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

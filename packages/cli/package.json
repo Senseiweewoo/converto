@@ -1,0 +1,14 @@
+{
+  "name": "@converto/cli",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "converto": "./bin/converto.js"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@converto/core": "*",
+    "pdf-lib": "^1.17.1"
+  }
+}

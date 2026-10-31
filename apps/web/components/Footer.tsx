@@ -67,23 +67,23 @@ export function Footer() {
             </h4>
             <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
               <li>
-                <Link href="/#privacy" className="hover:text-emerald-600 transition">
-                  Privacy Promise
+                <Link href="/pricing" className="hover:text-emerald-600 transition">
+                  Pricing & Pro Plan
                 </Link>
               </li>
               <li>
-                <Link href="/#workflows" className="hover:text-emerald-600 transition">
+                <Link href="/workflows" className="hover:text-emerald-600 transition">
                   Workflow Builder
                 </Link>
               </li>
               <li>
-                <Link href="/#api" className="hover:text-emerald-600 transition">
-                  Developer API
+                <Link href="/batch" className="hover:text-emerald-600 transition">
+                  Batch Processing Studio
                 </Link>
               </li>
               <li>
-                <Link href="/#pro" className="hover:text-emerald-600 transition">
-                  Pro Plan
+                <Link href="/api-docs" className="hover:text-emerald-600 transition">
+                  Developer REST API & CLI
                 </Link>
               </li>
             </ul>

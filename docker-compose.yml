@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  converto-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: converto-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_URL=redis://converto-redis:6379
+      - CLAMAV_HOST=converto-clamav
+      - CLAMAV_PORT=3310
+    depends_on:
+      - converto-redis
+      - converto-clamav
+    networks:
+      - converto-net
+
+  converto-redis:
+    image: redis:7-alpine
+    container_name: converto-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy volatile-lru
+    networks:
+      - converto-net
+
+  converto-clamav:
+    image: clamav/clamav:latest
+    container_name: converto-clamav
+    restart: unless-stopped
+    environment:
+      - CLAMAV_NO_FRESHCLAM=false
+    networks:
+      - converto-net
+
+networks:
+  converto-net:
+    driver: bridge

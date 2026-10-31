@@ -2,7 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@converto/core', '@converto/tools'],
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
+  transpilePackages: ['@converto/core', '@converto/tools', '@converto/ai'],
   webpack: (config) => {
     // Required for pdfjs-dist and worker loading
     config.resolve.alias.canvas = false;
@@ -20,11 +21,15 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN',
           },
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=()',
           },
         ],
       },
