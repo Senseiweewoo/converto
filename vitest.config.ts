@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@converto/core': path.resolve(__dirname, './packages/core/src/index.ts'),
       '@converto/tools': path.resolve(__dirname, './packages/tools/src/index.ts'),
+      '@converto/ai': path.resolve(__dirname, './packages/ai/src/index.ts'),
     },
   },
 });

@@ -10,6 +10,7 @@
   "dependencies": {
     "@converto/core": "*",
     "@converto/tools": "*",
+    "@converto/ai": "*",
     "clsx": "^2.1.1",
     "fflate": "^0.8.3",
     "lucide-react": "^0.454.0",

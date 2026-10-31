@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/tools" },
+    { "path": "./packages/ai" },
     { "path": "./apps/web" }
   ]
 }
