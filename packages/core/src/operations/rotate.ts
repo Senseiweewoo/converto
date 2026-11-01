@@ -27,16 +27,17 @@ export async function rotatePdf(
   const pages = doc.getPages();
   let rotatedCount = 0;
 
+  const pageTarget = options?.pages || 'all';
   let targetIndices = new Set<number>();
-  if (options.pages === 'all') {
+  if (pageTarget === 'all') {
     for (let i = 0; i < totalPages; i++) targetIndices.add(i);
-  } else if (options.pages === 'odd') {
+  } else if (pageTarget === 'odd') {
     for (let i = 0; i < totalPages; i += 2) targetIndices.add(i);
-  } else if (options.pages === 'even') {
+  } else if (pageTarget === 'even') {
     for (let i = 1; i < totalPages; i += 2) targetIndices.add(i);
   } else {
     // Custom range
-    const ranges = parsePageRanges(options.pages, totalPages);
+    const ranges = parsePageRanges(pageTarget, totalPages);
     for (const group of ranges) {
       for (const idx of group) targetIndices.add(idx);
     }

@@ -22,7 +22,8 @@ export interface SplitResult {
   summary: string;
 }
 
-export function parsePageRanges(rangesStr: string, totalPages: number): number[][] {
+export function parsePageRanges(rangesStr?: string | null, totalPages: number = 0): number[][] {
+  if (!rangesStr || typeof rangesStr !== 'string') return [];
   const parts = rangesStr.split(',').map((p) => p.trim()).filter(Boolean);
   const result: number[][] = [];
 

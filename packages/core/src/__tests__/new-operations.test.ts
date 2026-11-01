@@ -4,6 +4,8 @@ import { PDFDocument, rgb } from 'pdf-lib';
 import { convertPptxToPdf, extractSlidesFromPptx } from '../operations/pptx-to-pdf';
 import { convertPdfToImages } from '../operations/pdf-to-images';
 import { ocrPdf, extractRawTextFromPdfBuffer } from '../operations/ocr-pdf';
+import { parsePageRanges } from '../operations/split';
+import { comparePdfs } from '../operations/compare';
 
 describe('New Operations: PPTX to PDF, PDF to Images, OCR & Text Extraction', () => {
   function createMockPptx(slides: { title: string; bullets: string[] }[]): Uint8Array {
@@ -81,5 +83,26 @@ describe('New Operations: PPTX to PDF, PDF to Images, OCR & Text Extraction', ()
 
     const doc = await PDFDocument.load(ocrResult.data);
     expect(doc.getPageCount()).toBe(1);
+  });
+
+  it('safely handles undefined and null page range inputs without crashing', () => {
+    expect(parsePageRanges(undefined as any, 5)).toEqual([]);
+    expect(parsePageRanges(null as any, 5)).toEqual([]);
+    expect(parsePageRanges('', 5)).toEqual([]);
+    expect(parsePageRanges('1-3', 5)).toEqual([[0, 1, 2]]);
+  });
+
+  it('generates a valid comparison report PDF when comparing documents', async () => {
+    const docA = await createSamplePdf('Document Alpha Version 1.0');
+    const docB = await createSamplePdf('Document Beta Version 2.0');
+
+    const result = await comparePdfs(docA, docB);
+    expect(result.docAPageCount).toBe(1);
+    expect(result.docBPageCount).toBe(1);
+    expect(result.reportPdfData).toBeDefined();
+    expect(result.reportPdfData.length).toBeGreaterThan(500);
+
+    const reportDoc = await PDFDocument.load(result.reportPdfData);
+    expect(reportDoc.getPageCount()).toBe(1);
   });
 });

@@ -150,7 +150,7 @@ export default function WorkflowsPage() {
               Visual Workflow Pipeline Builder
             </h1>
             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-white">
-              Phase C
+              Pipeline Automation
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

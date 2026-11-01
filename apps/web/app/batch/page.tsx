@@ -103,10 +103,21 @@ export default function BatchProcessingPage() {
 
         try {
           const controller = new AbortController();
+          const defaults: Record<string, any> = {
+            'compress-pdf': { preset: 'basic', removeMetadata: true },
+            'rotate-pdf': { angle: 90, pages: 'all' },
+            'page-numbers': { position: 'bottom-center', format: 'page-of-total' },
+            'watermark-pdf': { type: 'text', text: 'CONFIDENTIAL', opacity: 0.2, rotation: 45 },
+          };
+          const effectiveSettings = {
+            ...(defaults[selectedOperation] || {}),
+            ...operationSettings,
+          };
+
           const res = await executeTool(
             selectedOperation,
             [currentItem.file],
-            operationSettings,
+            effectiveSettings,
             {
               signal: controller.signal,
               onProgress: (pct) => {
@@ -196,7 +207,7 @@ export default function BatchProcessingPage() {
               Batch & Folder Processing Studio
             </h1>
             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-white">
-              Phase B
+              Batch Processing
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -264,6 +275,62 @@ export default function BatchProcessingPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {selectedOperation === 'rotate-pdf' && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                  Rotation Angle
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[90, 180, 270].map((angle) => (
+                    <button
+                      key={angle}
+                      type="button"
+                      onClick={() => setOperationSettings({ ...operationSettings, angle, pages: 'all' })}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition ${
+                        (operationSettings.angle || 90) === angle
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {angle}°
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedOperation === 'page-numbers' && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                  Position
+                </label>
+                <select
+                  value={operationSettings.position || 'bottom-center'}
+                  onChange={(e) => setOperationSettings({ ...operationSettings, position: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                >
+                  <option value="bottom-center">Bottom Center</option>
+                  <option value="bottom-right">Bottom Right</option>
+                  <option value="top-right">Top Right</option>
+                </select>
+              </div>
+            )}
+
+            {selectedOperation === 'watermark-pdf' && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                  Watermark Text
+                </label>
+                <input
+                  type="text"
+                  value={operationSettings.text || 'CONFIDENTIAL'}
+                  onChange={(e) => setOperationSettings({ ...operationSettings, type: 'text', text: e.target.value, opacity: 0.2, rotation: 45 })}
+                  placeholder="Watermark text..."
+                  className="w-full px-3 py-1.5 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                />
               </div>
             )}
 

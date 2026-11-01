@@ -24,8 +24,22 @@ export function ResultSummary({ result, onReset }: ResultSummaryProps) {
   const handlePlayAudio = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance('Document read aloud via Converto Web Speech local synthesizer.');
+
+    let textToSpeak = 'Document read aloud via Converto Web Speech local synthesizer.';
+    if (primaryFile && primaryFile.data) {
+      try {
+        const decoded = new TextDecoder().decode(primaryFile.data);
+        if (decoded && decoded.trim().length > 0) {
+          textToSpeak = decoded.slice(0, 4000);
+        }
+      } catch {}
+    }
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
     utterance.onend = () => setIsPlayingAudio(false);
+    utterance.onerror = () => setIsPlayingAudio(false);
     window.speechSynthesis.speak(utterance);
     setIsPlayingAudio(true);
   };

@@ -500,7 +500,27 @@ export function ToolSettings({ toolId, settings, onChange }: ToolSettingsProps) 
       return (
         <div className="space-y-4">
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
-            Form fields are automatically detected and prepared for one-click flattening into permanent read-only vector content.
+            Form fields are automatically detected and prepared for filling and flattening into permanent read-only vector content.
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+              Field Values (JSON or Key=Value pairs)
+            </label>
+            <textarea
+              rows={3}
+              value={typeof settings.fieldValues === 'string' ? settings.fieldValues : JSON.stringify(settings.fieldValues || {}, null, 2)}
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  update('fieldValues', parsed);
+                } catch {
+                  update('fieldValues', e.target.value);
+                }
+              }}
+              placeholder='{"FullName": "John Doe", "Date": "2026-11-01"}'
+              className="w-full px-3.5 py-2 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">Provide field values in JSON format or leave empty to preserve existing values.</p>
           </div>
           <div className="flex items-center gap-2">
             <input
