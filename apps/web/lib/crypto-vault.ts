@@ -42,6 +42,8 @@ export async function deriveKey(passphrase: string, salt: Uint8Array): Promise<C
   );
 }
 
+import { uint8ArrayToBase64, base64ToUint8Array } from './share-service';
+
 export async function encryptProfile(
   passphrase: string,
   profile: UserProfileData
@@ -58,9 +60,9 @@ export async function encryptProfile(
   );
 
   return {
-    saltBase64: btoa(String.fromCharCode(...salt)),
-    ivBase64: btoa(String.fromCharCode(...iv)),
-    cipherTextBase64: btoa(String.fromCharCode(...new Uint8Array(cipherBuffer))),
+    saltBase64: uint8ArrayToBase64(salt),
+    ivBase64: uint8ArrayToBase64(iv),
+    cipherTextBase64: uint8ArrayToBase64(new Uint8Array(cipherBuffer)),
   };
 }
 
@@ -68,29 +70,17 @@ export async function decryptProfile(
   passphrase: string,
   vault: EncryptedVault
 ): Promise<UserProfileData> {
-  const salt = new Uint8Array(
-    atob(vault.saltBase64)
-      .split('')
-      .map((c) => c.charCodeAt(0))
-  );
-  const iv = new Uint8Array(
-    atob(vault.ivBase64)
-      .split('')
-      .map((c) => c.charCodeAt(0))
-  );
-  const cipherBytes = new Uint8Array(
-    atob(vault.cipherTextBase64)
-      .split('')
-      .map((c) => c.charCodeAt(0))
-  );
+  const salt = base64ToUint8Array(vault.saltBase64);
+  const iv = base64ToUint8Array(vault.ivBase64);
+  const cipherBytes = base64ToUint8Array(vault.cipherTextBase64);
 
-  const key = await deriveKey(passphrase, salt);
+  const key = await deriveKey(passphrase, salt as unknown as Uint8Array);
 
   try {
     const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: iv as unknown as BufferSource },
       key,
-      cipherBytes
+      cipherBytes as unknown as BufferSource
     );
     const jsonStr = new TextDecoder().decode(decryptedBuffer);
     return JSON.parse(jsonStr);

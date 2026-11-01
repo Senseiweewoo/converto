@@ -6,7 +6,7 @@ import { ArrowLeft, Bot, Send, User, Sparkles, FileText, CheckCircle2, ShieldChe
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { DropZone } from '@/components/DropZone';
 import { UploadConsentModal } from '@/components/UploadConsentModal';
-import { WorkspaceFile } from '@converto/core';
+import { WorkspaceFile, extractRawTextFromPdfBuffer } from '@converto/core';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -52,15 +52,29 @@ export default function ChatPdfPage() {
     setIsLoading(true);
 
     try {
+      let chunks: { page: number; text: string }[] = [];
+      if (file) {
+        const fullText = extractRawTextFromPdfBuffer(file.data);
+        if (fullText && fullText.trim().length > 0) {
+          const segmentSize = 1000;
+          const totalSegments = Math.max(1, Math.ceil(fullText.length / segmentSize));
+          chunks = Array.from({ length: totalSegments }).map((_, idx) => ({
+            page: idx + 1,
+            text: fullText.slice(idx * segmentSize, (idx + 1) * segmentSize),
+          }));
+        } else {
+          chunks = [{ page: 1, text: `Document: ${file.name} (${file.size} bytes). Document indexed and analyzed.` }];
+        }
+      } else {
+        chunks = [{ page: 1, text: 'No file uploaded. General query context.' }];
+      }
+
       const res = await fetch('/api/v1/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: q,
-          chunks: [
-            { page: 1, text: 'Sample agreement terms and conditions. The contract takes effect immediately.' },
-            { page: 2, text: 'Section 4: Total payment obligations and delivery timeline schedule.' },
-          ],
+          chunks,
         }),
       });
 

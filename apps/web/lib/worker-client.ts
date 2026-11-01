@@ -34,6 +34,10 @@ import {
   deepSanitizePdf,
   convertDocxToPdf,
   convertXlsxToPdf,
+  convertPptxToPdf,
+  convertPdfToImages,
+  ocrPdf,
+  extractRawTextFromPdfBuffer,
 } from '@converto/core';
 
 export async function executeTool(
@@ -763,24 +767,74 @@ export async function executeTool(
     case 'powerpoint-to-pdf': {
       const target = files[0];
       const cleanName = target.name.replace(/\.(pptx|ppt)$/i, '');
-      const resBytes = await convertHtmlToPdf({
-        htmlContent: `<h1>${cleanName}</h1><p>Presentation Slide Deck &bull; Converted via Converto Local Engine.</p>`,
-      }, ctx);
+      const result = await convertPptxToPdf(target.data, target.name, ctx);
 
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: `${cleanName}.pdf`,
-        size: resBytes.length,
+        size: result.data.length,
         type: 'application/pdf',
         lastModified: Date.now(),
-        data: resBytes,
-        pageCount: 1,
+        data: result.data,
+        pageCount: result.slideCount,
       };
       return {
         files: [outputFile],
-        summary: `Transformed presentation slides into standard PDF.`,
+        summary: `Transformed presentation deck (${result.slideCount} slides) into standard 16:9 vector PDF.`,
         suggestedNext: ['compress-pdf'],
-        metrics: { originalSize, finalSize: outputFile.size, pageCount: 1, durationMs: Date.now() - startTime },
+        metrics: { originalSize, finalSize: outputFile.size, pageCount: result.slideCount, durationMs: Date.now() - startTime },
+      };
+    }
+
+    case 'pdf-to-jpg': {
+      const target = files[0];
+      const result = await convertPdfToImages(target.data, target.name, {
+        format: settings.format || 'png',
+        quality: settings.quality || 0.92,
+      }, ctx);
+
+      const outputFiles: WorkspaceFile[] = result.images.map((img) => ({
+        id: Math.random().toString(36).substring(2, 9),
+        name: img.name,
+        size: img.data.length,
+        type: img.mimeType,
+        lastModified: Date.now(),
+        data: img.data,
+        pageCount: 1,
+      }));
+
+      const finalSize = outputFiles.reduce((acc, f) => acc + f.size, 0);
+
+      return {
+        files: outputFiles,
+        summary: result.summary,
+        suggestedNext: ['jpg-to-pdf', 'compress-pdf'],
+        metrics: { originalSize, finalSize, pageCount: outputFiles.length, durationMs: Date.now() - startTime },
+      };
+    }
+
+    case 'ocr-pdf': {
+      const target = files[0];
+      const result = await ocrPdf(target.data, target.name, {
+        language: settings.language || 'eng',
+        makeSearchable: true,
+      }, ctx);
+
+      const outputFile: WorkspaceFile = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: `searchable_${target.name}`,
+        size: result.data.length,
+        type: 'application/pdf',
+        lastModified: Date.now(),
+        data: result.data,
+        pageCount: result.pageCount,
+      };
+
+      return {
+        files: [outputFile],
+        summary: result.summary,
+        suggestedNext: ['pdf-to-markdown', 'compress-pdf'],
+        metrics: { originalSize, finalSize: outputFile.size, pageCount: result.pageCount, durationMs: Date.now() - startTime },
       };
     }
 

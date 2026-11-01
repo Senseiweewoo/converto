@@ -1,31 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-interface ServerShareRecord {
-  id: string;
-  filename: string;
-  fileSizeBytes: number;
-  dataBase64: string;
-  isViewOnly: boolean;
-  passwordHash?: string;
-  maxDownloads?: number;
-  downloadCount: number;
-  createdAt: number;
-  expiresAt: number;
-  revoked: boolean;
-}
-
-// Global server memory store with TTL purge (in production backed by Redis / S3 lifecycle)
-const globalServerShares = new Map<string, ServerShareRecord>();
-
-// Cleanup expired shares periodically
-function purgeExpiredShares() {
-  const now = Date.now();
-  for (const [id, record] of globalServerShares.entries()) {
-    if (record.revoked || now > record.expiresAt) {
-      globalServerShares.delete(id);
-    }
-  }
-}
+import { ServerShareRecord, saveServerShare, purgeExpiredShares } from '@/lib/server-share-store';
 
 export async function POST(req: NextRequest) {
   try {
@@ -68,7 +42,7 @@ export async function POST(req: NextRequest) {
       revoked: false,
     };
 
-    globalServerShares.set(id, record);
+    saveServerShare(record);
 
     return NextResponse.json({
       success: true,

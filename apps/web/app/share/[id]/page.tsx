@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { shareService, ShareLinkRecord } from '@/lib/share-service';
+import { shareService, ShareLinkRecord, base64ToUint8Array } from '@/lib/share-service';
 import { ShieldCheck, Lock, Download, Eye, AlertCircle, Clock, Trash2, ArrowLeft, CheckCircle } from 'lucide-react';
 
 export default function ShareRecipientPage() {
@@ -18,23 +18,73 @@ export default function ShareRecipientPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [revokedMessage, setRevokedMessage] = useState<string | null>(null);
 
+  const [isServerShare, setIsServerShare] = useState(false);
+
   useEffect(() => {
     if (!shareId) return;
 
+    // 1. Try local storage first
     const item = shareService.getShareLink(shareId);
-    if (!item) {
+    if (item) {
+      setRecord(item);
+      setIsServerShare(false);
+      if (!item.password) {
+        setIsUnlocked(true);
+        const blob = new Blob([item.data.buffer as ArrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      }
       setLoading(false);
       return;
     }
 
-    setRecord(item);
-    if (!item.password) {
-      setIsUnlocked(true);
-      const blob = new Blob([item.data.buffer as ArrayBuffer], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-    }
-    setLoading(false);
+    // 2. Fall back to server endpoint for cross-device sharing
+    fetch(`/api/v1/share/${shareId}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        setIsServerShare(true);
+
+        if (data.requiresPassword) {
+          setRecord({
+            id: data.id,
+            filename: data.filename,
+            fileSizeBytes: data.fileSizeBytes || 0,
+            data: new Uint8Array(),
+            isViewOnly: !!data.isViewOnly,
+            password: '***',
+            createdAt: Date.now(),
+            expiresAt: data.expiresAt || 0,
+            downloadCount: 0,
+            revoked: false,
+          });
+        } else if (data.dataBase64) {
+          const bytes = base64ToUint8Array(data.dataBase64);
+          setRecord({
+            id: data.id,
+            filename: data.filename,
+            fileSizeBytes: bytes.byteLength,
+            data: bytes,
+            isViewOnly: !!data.isViewOnly,
+            createdAt: Date.now(),
+            expiresAt: data.expiresAt || 0,
+            downloadCount: data.downloadCount || 0,
+            maxDownloads: data.maxDownloads,
+            revoked: false,
+          });
+          setIsUnlocked(true);
+          const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          setPreviewUrl(url);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
 
     return () => {
       if (previewUrl) {
@@ -43,51 +93,106 @@ export default function ShareRecipientPage() {
     };
   }, [shareId]);
 
-  const handleUnlock = (e: React.FormEvent) => {
+  const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!record) return;
 
-    if (passwordInput === record.password) {
-      setIsUnlocked(true);
-      setPasswordError('');
-      const blob = new Blob([record.data.buffer as ArrayBuffer], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-    } else {
-      setPasswordError('Incorrect password. Please try again.');
-    }
-  };
-
-  const handleDownload = () => {
-    if (!record || record.isViewOnly) return;
-
-    const success = shareService.recordDownload(record.id);
-    if (!success) {
-      alert('Download limit has been reached or link is no longer valid.');
+    if (!isServerShare) {
+      if (passwordInput === record.password) {
+        setIsUnlocked(true);
+        setPasswordError('');
+        const blob = new Blob([record.data.buffer as ArrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      } else {
+        setPasswordError('Incorrect password. Please try again.');
+      }
       return;
     }
 
-    const blob = new Blob([record.data.buffer as ArrayBuffer], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = record.filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // Refresh record
-    const updated = shareService.getShareLink(record.id);
-    setRecord(updated);
+    // Server-side password verification
+    try {
+      const res = await fetch(`/api/v1/share/${record.id}?pwd=${encodeURIComponent(passwordInput)}`);
+      if (!res.ok) {
+        setPasswordError('Incorrect password. Please try again.');
+        return;
+      }
+      const data = await res.json();
+      if (data.dataBase64) {
+        const bytes = base64ToUint8Array(data.dataBase64);
+        setRecord((prev) => prev ? { ...prev, data: bytes } : null);
+        setIsUnlocked(true);
+        setPasswordError('');
+        const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      }
+    } catch (err: any) {
+      setPasswordError(err?.message || 'Error verifying password.');
+    }
   };
 
-  const handleRevoke = () => {
+  const handleDownload = async () => {
+    if (!record || record.isViewOnly) return;
+
+    if (!isServerShare) {
+      const success = shareService.recordDownload(record.id);
+      if (!success) {
+        alert('Download limit has been reached or link is no longer valid.');
+        return;
+      }
+
+      const blob = new Blob([record.data.buffer as ArrayBuffer], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = record.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Refresh record
+      const updated = shareService.getShareLink(record.id);
+      setRecord(updated);
+      return;
+    }
+
+    // Server share download
+    try {
+      const res = await fetch(`/api/v1/share/${record.id}?download=1&pwd=${encodeURIComponent(passwordInput)}`);
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Download limit reached.');
+        return;
+      }
+
+      const blob = new Blob([record.data.buffer as ArrayBuffer], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = record.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setRecord((prev) => prev ? { ...prev, downloadCount: (prev.downloadCount || 0) + 1 } : null);
+    } catch {
+      alert('Failed to download document.');
+    }
+  };
+
+  const handleRevoke = async () => {
     if (!record) return;
     if (confirm('Are you sure you want to revoke this link? Anyone with this URL will immediately lose access.')) {
-      shareService.revokeShareLink(record.id);
+      if (!isServerShare) {
+        shareService.revokeShareLink(record.id);
+      } else {
+        await fetch(`/api/v1/share/${record.id}`, { method: 'DELETE' }).catch(() => {});
+      }
       setRecord(null);
-      setRevokedMessage('This share link has been revoked and the file data deleted from memory.');
+      setRevokedMessage('This share link has been revoked and the file data deleted.');
     }
   };
 

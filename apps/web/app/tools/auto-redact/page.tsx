@@ -16,7 +16,7 @@ import {
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { DropZone } from '@/components/DropZone';
 import { UploadConsentModal } from '@/components/UploadConsentModal';
-import { WorkspaceFile, redactPdf } from '@converto/core';
+import { WorkspaceFile, redactPdf, extractRawTextFromPdfBuffer } from '@converto/core';
 import { detectDeterministicPii, PiiDetection, PiiCategory } from '@converto/ai';
 
 export default function AutoRedactPage() {
@@ -44,19 +44,20 @@ export default function AutoRedactPage() {
     setIsScanning(true);
     setRedactedFile(null);
 
-    // Simulate page text extraction and deterministic scan
-    setTimeout(() => {
-      const sampleText = `
-        Contract agreement between Jane Doe (jane.doe@enterprise.com, phone: 415-555-0199).
-        Billing Account Card: 4532-0150-1234-5674 (Visa active).
-        Tax Identifier / SSN: 123-45-6789.
-        Address: 742 Evergreen Terrace, Springfield.
-      `;
+    try {
+      const extractedText = extractRawTextFromPdfBuffer(targetFile.data);
+      const textToScan = extractedText && extractedText.trim().length > 0
+        ? extractedText
+        : `Document: ${targetFile.name}\nScanned document with no plain text tokens.`;
 
-      const found = detectDeterministicPii(sampleText, 0);
+      const found = detectDeterministicPii(textToScan, 0);
       setDetections(found);
+    } catch (err) {
+      console.error('PII scan error:', err);
+      setDetections([]);
+    } finally {
       setIsScanning(false);
-    }, 600);
+    }
   };
 
   const toggleApproval = (id: string) => {

@@ -16,6 +16,28 @@ export interface ShareLinkRecord {
 
 const SHARES_STORAGE_KEY = 'converto_share_links';
 
+// Safe chunked Base64 encoding that never overflows the JS call stack
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  const CHUNK_SIZE = 8192;
+  for (let i = 0; i < len; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, len));
+    binary += String.fromCharCode.apply(null, chunk as any);
+  }
+  return btoa(binary);
+}
+
+// Safe decoding from Base64 to Uint8Array
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 class ShareService {
   private inMemoryShares: Map<string, ShareLinkRecord> = new Map();
 
@@ -30,12 +52,7 @@ class ShareService {
       if (raw) {
         const parsed = JSON.parse(raw);
         for (const item of parsed) {
-          // Re-hydrate byte array
-          item.data = new Uint8Array(
-            atob(item.dataBase64)
-              .split('')
-              .map((c: string) => c.charCodeAt(0))
-          );
+          item.data = base64ToUint8Array(item.dataBase64);
           this.inMemoryShares.set(item.id, item);
         }
       }
@@ -49,11 +66,11 @@ class ShareService {
     try {
       const arrayToSave = Array.from(this.inMemoryShares.values()).map((item) => ({
         ...item,
-        dataBase64: btoa(String.fromCharCode(...item.data)),
+        dataBase64: uint8ArrayToBase64(item.data),
       }));
       localStorage.setItem(SHARES_STORAGE_KEY, JSON.stringify(arrayToSave));
     } catch {
-      // ignore
+      // Quota exceeded or private browsing restricted: in-memory copy persists
     }
   }
 

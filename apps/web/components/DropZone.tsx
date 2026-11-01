@@ -13,6 +13,35 @@ interface DropZoneProps {
   description?: string;
 }
 
+function expandAcceptList(acceptList: string[]): string[] {
+  const result = new Set<string>(acceptList);
+  for (const item of acceptList) {
+    if (item === 'application/pdf') result.add('.pdf');
+    else if (item.includes('wordprocessingml') || item === 'application/msword') {
+      result.add('.docx');
+      result.add('.doc');
+    } else if (item.includes('spreadsheetml') || item === 'application/vnd.ms-excel' || item === 'text/csv') {
+      result.add('.xlsx');
+      result.add('.xls');
+      result.add('.csv');
+    } else if (item.includes('presentationml') || item === 'application/vnd.ms-powerpoint') {
+      result.add('.pptx');
+      result.add('.ppt');
+    } else if (item === 'image/*' || item.startsWith('image/')) {
+      result.add('.png');
+      result.add('.jpg');
+      result.add('.jpeg');
+      result.add('.webp');
+    } else if (item === 'text/html') {
+      result.add('.html');
+      result.add('.htm');
+    } else if (item === 'text/markdown') {
+      result.add('.md');
+    }
+  }
+  return Array.from(result);
+}
+
 export function DropZone({
   accept,
   minFiles,
@@ -24,6 +53,7 @@ export function DropZone({
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const expandedAccept = expandAcceptList(accept);
 
   const processFileList = useCallback(
     async (fileList: FileList | File[]) => {
@@ -41,14 +71,19 @@ export function DropZone({
 
       for (const file of rawFiles) {
         const ext = `.${file.name.split('.').pop()?.toLowerCase()}`;
-        const isPdfAccept = accept.includes('application/pdf');
-        const isImageAccept = accept.some((a) => a.startsWith('image/'));
-
         const isPdf = file.type === 'application/pdf' || ext === '.pdf';
-        const isImage = file.type.startsWith('image/') || ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
 
-        if (isPdfAccept && !isPdf && !isImageAccept) {
-          setErrorMsg(`"${file.name}" is not a valid PDF file.`);
+        const matchesMime = accept.some((a) => {
+          if (a.endsWith('/*')) {
+            const prefix = a.replace('/*', '');
+            return file.type.startsWith(prefix);
+          }
+          return file.type === a;
+        });
+        const matchesExt = expandedAccept.some((a) => a.startsWith('.') && ext === a.toLowerCase());
+
+        if (!matchesMime && !matchesExt && accept.length > 0) {
+          setErrorMsg(`"${file.name}" is not a supported file format for this tool.`);
           return;
         }
 
@@ -65,7 +100,7 @@ export function DropZone({
 
       onFilesSelected(validFiles);
     },
-    [accept, maxFiles, onFilesSelected]
+    [accept, expandedAccept, maxFiles, onFilesSelected]
   );
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -109,7 +144,7 @@ export function DropZone({
           ref={fileInputRef}
           type="file"
           multiple={maxFiles > 1}
-          accept={accept.join(',')}
+          accept={expandedAccept.join(',')}
           onChange={handleFileInputChange}
           className="hidden"
         />

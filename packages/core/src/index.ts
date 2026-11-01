@@ -28,3 +28,6 @@ export * from './operations/edit-pdf';
 export * from './operations/deep-sanitizer';
 export * from './operations/docx-to-pdf';
 export * from './operations/xlsx-to-pdf';
+export * from './operations/pptx-to-pdf';
+export * from './operations/pdf-to-images';
+export * from './operations/ocr-pdf';
