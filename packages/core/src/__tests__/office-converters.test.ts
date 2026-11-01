@@ -109,4 +109,36 @@ describe('Word & Excel to PDF Converters Suite', () => {
     const loaded = await PDFDocument.load(result.data);
     expect(loaded.getPageCount()).toBe(result.pageCount);
   });
+
+  it('reads dynamic page geometry and margins from w:sectPr', async () => {
+    // US Letter Landscape: 15840 x 12240 twips (792 x 612 pt)
+    const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Landscape Document Test</w:t></w:r></w:p>
+    <w:sectPr>
+      <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
+      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+    const zipObj: Record<string, Uint8Array> = {
+      '[Content_Types].xml': new TextEncoder().encode('<Types></Types>'),
+      'word/document.xml': new TextEncoder().encode(docXml),
+    };
+
+    const docxData = zipSync(zipObj);
+    const parsed = extractTextFromDocx(docxData);
+    expect(parsed.geometry.orientation).toBe('landscape');
+    expect(parsed.geometry.widthPt).toBe(792);
+    expect(parsed.geometry.heightPt).toBe(612);
+    expect(parsed.geometry.marginTopPt).toBe(36);
+
+    const result = await convertDocxToPdf(docxData, 'Landscape.docx');
+    const loaded = await PDFDocument.load(result.data);
+    const firstPage = loaded.getPage(0);
+    expect(firstPage.getWidth()).toBe(792);
+    expect(firstPage.getHeight()).toBe(612);
+  });
 });

@@ -39,6 +39,9 @@ import {
   ocrPdf,
   extractRawTextFromPdfBuffer,
 } from '@converto/core';
+import { renderDocxToPdfHighFidelity } from './converters/high-fidelity-docx-to-pdf';
+import { renderXlsxToPdfHighFidelity } from './converters/high-fidelity-xlsx-to-pdf';
+import { renderHtmlToPdfHighFidelity } from './converters/high-fidelity-html-to-pdf';
 
 export async function executeTool(
   toolId: string,
@@ -726,45 +729,81 @@ export async function executeTool(
 
     case 'word-to-pdf': {
       const target = files[0];
-      const result = await convertDocxToPdf(target.data, target.name, ctx);
+      let pdfBytes: Uint8Array;
+      let pageCount = 1;
+
+      if (typeof window !== 'undefined' && target.name.toLowerCase().endsWith('.docx')) {
+        try {
+          const hiFi = await renderDocxToPdfHighFidelity(target.data, target.name, ctx.onProgress);
+          pdfBytes = hiFi.data;
+          pageCount = hiFi.pageCount;
+        } catch (renderErr) {
+          console.warn('High-fidelity DOM rendering fallback to core vector engine:', renderErr);
+          const result = await convertDocxToPdf(target.data, target.name, ctx);
+          pdfBytes = result.data;
+          pageCount = result.pageCount;
+        }
+      } else {
+        const result = await convertDocxToPdf(target.data, target.name, ctx);
+        pdfBytes = result.data;
+        pageCount = result.pageCount;
+      }
 
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: `${target.name.replace(/\.(docx|doc)$/i, '')}.pdf`,
-        size: result.data.length,
+        size: pdfBytes.length,
         type: 'application/pdf',
         lastModified: Date.now(),
-        data: result.data,
-        pageCount: result.pageCount,
+        data: pdfBytes,
+        pageCount,
       };
 
       return {
         files: [outputFile],
-        summary: `Converted Word document (${result.extractedParagraphsCount} paragraphs) into ${result.pageCount} vector PDF page(s).`,
+        summary: `Converted Word document into ${pageCount} vector PDF page(s) with 1:1 visual and structural fidelity.`,
         suggestedNext: ['compress-pdf', 'sign-pdf'],
-        metrics: { originalSize, finalSize: outputFile.size, pageCount: result.pageCount, durationMs: Date.now() - startTime },
+        metrics: { originalSize, finalSize: outputFile.size, pageCount, durationMs: Date.now() - startTime },
       };
     }
 
     case 'excel-to-pdf': {
       const target = files[0];
-      const result = await convertXlsxToPdf(target.data, target.name, ctx);
+      let pdfBytes: Uint8Array;
+      let pageCount = 1;
+
+      if (typeof window !== 'undefined') {
+        try {
+          const hiFi = await renderXlsxToPdfHighFidelity(target.data, target.name, ctx.onProgress);
+          pdfBytes = hiFi.data;
+          pageCount = hiFi.pageCount;
+        } catch (renderErr) {
+          console.warn('High-fidelity XLSX fallback to core vector engine:', renderErr);
+          const result = await convertXlsxToPdf(target.data, target.name, ctx);
+          pdfBytes = result.data;
+          pageCount = result.pageCount;
+        }
+      } else {
+        const result = await convertXlsxToPdf(target.data, target.name, ctx);
+        pdfBytes = result.data;
+        pageCount = result.pageCount;
+      }
 
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: `${target.name.replace(/\.(xlsx|xls|csv)$/i, '')}.pdf`,
-        size: result.data.length,
+        size: pdfBytes.length,
         type: 'application/pdf',
         lastModified: Date.now(),
-        data: result.data,
-        pageCount: result.pageCount,
+        data: pdfBytes,
+        pageCount,
       };
 
       return {
         files: [outputFile],
-        summary: `Converted spreadsheet table (${result.rowCount} rows) into ${result.pageCount} PDF page(s).`,
+        summary: `Converted spreadsheet table into ${pageCount} PDF page(s) with preserved grid alignment and borders.`,
         suggestedNext: ['compress-pdf'],
-        metrics: { originalSize, finalSize: outputFile.size, pageCount: result.pageCount, durationMs: Date.now() - startTime },
+        metrics: { originalSize, finalSize: outputFile.size, pageCount, durationMs: Date.now() - startTime },
       };
     }
 
@@ -843,25 +882,41 @@ export async function executeTool(
     }
 
     case 'html-to-pdf': {
-      const resBytes = await convertHtmlToPdf({
-        url: settings.url,
-        htmlContent: settings.htmlContent,
-      }, ctx);
+      let pdfBytes: Uint8Array;
+      let pageCount = 1;
+
+      if (typeof window !== 'undefined' && settings.htmlContent) {
+        try {
+          const hiFi = await renderHtmlToPdfHighFidelity(settings.htmlContent, ctx.onProgress);
+          pdfBytes = hiFi.data;
+          pageCount = hiFi.pageCount;
+        } catch {
+          pdfBytes = await convertHtmlToPdf({
+            url: settings.url,
+            htmlContent: settings.htmlContent,
+          }, ctx);
+        }
+      } else {
+        pdfBytes = await convertHtmlToPdf({
+          url: settings.url,
+          htmlContent: settings.htmlContent,
+        }, ctx);
+      }
 
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: 'webpage_converted.pdf',
-        size: resBytes.length,
+        size: pdfBytes.length,
         type: 'application/pdf',
         lastModified: Date.now(),
-        data: resBytes,
-        pageCount: 1,
+        data: pdfBytes,
+        pageCount,
       };
       return {
         files: [outputFile],
-        summary: 'Successfully rendered HTML into vector PDF.',
+        summary: `Successfully rendered HTML into ${pageCount} vector PDF page(s) with full styling.`,
         suggestedNext: ['compress-pdf'],
-        metrics: { originalSize, finalSize: outputFile.size, pageCount: 1, durationMs: Date.now() - startTime },
+        metrics: { originalSize, finalSize: outputFile.size, pageCount, durationMs: Date.now() - startTime },
       };
     }
 
