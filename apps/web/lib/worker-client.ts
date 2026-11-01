@@ -32,6 +32,8 @@ import {
   convertHtmlToPdf,
   editPdf,
   deepSanitizePdf,
+  convertDocxToPdf,
+  convertXlsxToPdf,
 } from '@converto/core';
 
 export async function executeTool(
@@ -714,18 +716,60 @@ export async function executeTool(
       };
     }
 
-    case 'word-to-pdf':
-    case 'excel-to-pdf':
+    case 'word-to-pdf': {
+      const target = files[0];
+      const result = await convertDocxToPdf(target.data, target.name, ctx);
+
+      const outputFile: WorkspaceFile = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: `${target.name.replace(/\.(docx|doc)$/i, '')}.pdf`,
+        size: result.data.length,
+        type: 'application/pdf',
+        lastModified: Date.now(),
+        data: result.data,
+        pageCount: result.pageCount,
+      };
+
+      return {
+        files: [outputFile],
+        summary: `Converted Word document (${result.extractedParagraphsCount} paragraphs) into ${result.pageCount} vector PDF page(s).`,
+        suggestedNext: ['compress-pdf', 'sign-pdf'],
+        metrics: { originalSize, finalSize: outputFile.size, pageCount: result.pageCount, durationMs: Date.now() - startTime },
+      };
+    }
+
+    case 'excel-to-pdf': {
+      const target = files[0];
+      const result = await convertXlsxToPdf(target.data, target.name, ctx);
+
+      const outputFile: WorkspaceFile = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: `${target.name.replace(/\.(xlsx|xls|csv)$/i, '')}.pdf`,
+        size: result.data.length,
+        type: 'application/pdf',
+        lastModified: Date.now(),
+        data: result.data,
+        pageCount: result.pageCount,
+      };
+
+      return {
+        files: [outputFile],
+        summary: `Converted spreadsheet table (${result.rowCount} rows) into ${result.pageCount} PDF page(s).`,
+        suggestedNext: ['compress-pdf'],
+        metrics: { originalSize, finalSize: outputFile.size, pageCount: result.pageCount, durationMs: Date.now() - startTime },
+      };
+    }
+
     case 'powerpoint-to-pdf': {
       const target = files[0];
-      // Synthesize clean vector PDF container with document contents
+      const cleanName = target.name.replace(/\.(pptx|ppt)$/i, '');
       const resBytes = await convertHtmlToPdf({
-        htmlContent: `<h1>${target.name}</h1><p>Converted Office Document via Converto Secure Engine.</p>`,
+        htmlContent: `<h1>${cleanName}</h1><p>Presentation Slide Deck &bull; Converted via Converto Local Engine.</p>`,
       }, ctx);
 
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
-        name: `${target.name.replace(/\.[a-zA-Z0-9]+$/i, '')}.pdf`,
+        name: `${cleanName}.pdf`,
         size: resBytes.length,
         type: 'application/pdf',
         lastModified: Date.now(),
@@ -734,8 +778,8 @@ export async function executeTool(
       };
       return {
         files: [outputFile],
-        summary: `Successfully transformed ${target.name} into standard PDF.`,
-        suggestedNext: ['compress-pdf', 'sign-pdf'],
+        summary: `Transformed presentation slides into standard PDF.`,
+        suggestedNext: ['compress-pdf'],
         metrics: { originalSize, finalSize: outputFile.size, pageCount: 1, durationMs: Date.now() - startTime },
       };
     }

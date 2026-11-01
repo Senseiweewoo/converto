@@ -26,3 +26,5 @@ export * from './operations/pdf-to-office';
 export * from './operations/html-to-pdf';
 export * from './operations/edit-pdf';
 export * from './operations/deep-sanitizer';
+export * from './operations/docx-to-pdf';
+export * from './operations/xlsx-to-pdf';
