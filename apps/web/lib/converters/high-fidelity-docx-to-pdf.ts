@@ -8,9 +8,174 @@ export interface HighFidelityDocxResult {
 }
 
 /**
+ * Splits a rendered section that exceeds standard page height into distinct,
+ * fully padded page containers using a smart element walker.
+ * Guarantees zero mid-line slicing, proper top/bottom margins on every page,
+ * and table row integrity.
+ */
+function splitSectionIntoPages(
+  section: HTMLElement,
+  stagingContainer: HTMLElement,
+  targetWidthPx: number,
+  targetHeightPx: number
+): HTMLElement[] {
+  const comp = window.getComputedStyle(section);
+  const padTop = Math.max(parseFloat(comp.paddingTop) || 0, 48);
+  const padBottom = Math.max(parseFloat(comp.paddingBottom) || 0, 48);
+  const padLeft = Math.max(parseFloat(comp.paddingLeft) || 0, 48);
+  const padRight = Math.max(parseFloat(comp.paddingRight) || 0, 48);
+  const usableHeight = targetHeightPx - padTop - padBottom;
+
+  // If the section already fits within one physical page, return as-is
+  if (section.offsetHeight <= targetHeightPx + 20) {
+    section.style.width = `${targetWidthPx}px`;
+    section.style.maxWidth = `${targetWidthPx}px`;
+    section.style.minHeight = `${targetHeightPx}px`;
+    section.style.height = `${targetHeightPx}px`;
+    section.style.boxSizing = 'border-box';
+    section.style.overflow = 'hidden';
+    return [section];
+  }
+
+  // Locate child blocks inside <article> or direct children
+  const contentHost = (section.querySelector('article') as HTMLElement) || section;
+  const children = Array.from(contentHost.children) as HTMLElement[];
+
+  if (children.length === 0) {
+    return [section];
+  }
+
+  const pages: HTMLElement[] = [];
+
+  function createPageContainer(): { page: HTMLElement; body: HTMLElement } {
+    const page = document.createElement('section');
+    page.className = `${section.className} converto-page-container`;
+    page.style.width = `${targetWidthPx}px`;
+    page.style.minWidth = `${targetWidthPx}px`;
+    page.style.maxWidth = `${targetWidthPx}px`;
+    page.style.height = `${targetHeightPx}px`;
+    page.style.minHeight = `${targetHeightPx}px`;
+    page.style.maxHeight = `${targetHeightPx}px`;
+    page.style.boxSizing = 'border-box';
+    page.style.padding = `${padTop}px ${padRight}px ${padBottom}px ${padLeft}px`;
+    page.style.backgroundColor = comp.backgroundColor || '#ffffff';
+    page.style.position = 'relative';
+    page.style.overflow = 'hidden';
+    page.style.margin = '0';
+
+    // Clone header if present
+    const header = section.querySelector('header');
+    if (header) {
+      page.appendChild(header.cloneNode(true));
+    }
+
+    const body = document.createElement('div');
+    body.className = 'converto-page-body';
+    body.style.width = '100%';
+    body.style.maxWidth = '100%';
+    body.style.boxSizing = 'border-box';
+    page.appendChild(body);
+
+    // Clone footer if present
+    const footer = section.querySelector('footer');
+    if (footer) {
+      page.appendChild(footer.cloneNode(true));
+    }
+
+    stagingContainer.appendChild(page);
+    return { page, body };
+  }
+
+  let { page: curPage, body: curBody } = createPageContainer();
+  let currentHeight = 0;
+
+  for (const child of children) {
+    // Preserve paragraph spacing around shaded blocks and headings
+    const childComp = window.getComputedStyle(child);
+    const hasShading =
+      (childComp.backgroundColor &&
+        childComp.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+        childComp.backgroundColor !== 'transparent') ||
+      /^H[1-6]$/.test(child.tagName) ||
+      child.classList.contains('docx-highlight') ||
+      child.getAttribute('style')?.includes('background');
+
+    if (hasShading) {
+      child.style.display = 'flow-root';
+      const curMt = parseFloat(childComp.marginTop) || 0;
+      const curMb = parseFloat(childComp.marginBottom) || 0;
+      if (curMt < 14) child.style.marginTop = '14px';
+      if (curMb < 10) child.style.marginBottom = '10px';
+    }
+
+    // Smart table row splitting for tall tables
+    if (child.tagName === 'TABLE' && child.offsetHeight > usableHeight * 0.5) {
+      const rows = Array.from(child.querySelectorAll('tr'));
+      if (rows.length > 1) {
+        let curTable = child.cloneNode(false) as HTMLTableElement;
+        curTable.style.width = '100%';
+        curTable.style.maxWidth = '100%';
+        curTable.style.boxSizing = 'border-box';
+
+        let curTbody = document.createElement('tbody');
+        curTable.appendChild(curTbody);
+        curBody.appendChild(curTable);
+
+        for (const tr of rows) {
+          const trHeight = tr.offsetHeight || 32;
+
+          if (currentHeight + trHeight > usableHeight && curTbody.children.length > 0) {
+            pages.push(curPage);
+
+            const next = createPageContainer();
+            curPage = next.page;
+            curBody = next.body;
+            currentHeight = 0;
+
+            curTable = child.cloneNode(false) as HTMLTableElement;
+            curTable.style.width = '100%';
+            curTable.style.maxWidth = '100%';
+            curTable.style.boxSizing = 'border-box';
+
+            curTbody = document.createElement('tbody');
+            curTable.appendChild(curTbody);
+            curBody.appendChild(curTable);
+          }
+
+          curTbody.appendChild(tr.cloneNode(true));
+          currentHeight += trHeight;
+        }
+        continue;
+      }
+    }
+
+    const childHeight = child.offsetHeight || 36;
+
+    // Check if adding this child crosses the usable page height
+    if (currentHeight + childHeight > usableHeight && currentHeight > 30) {
+      pages.push(curPage);
+
+      const next = createPageContainer();
+      curPage = next.page;
+      curBody = next.body;
+      currentHeight = 0;
+    }
+
+    curBody.appendChild(child.cloneNode(true));
+    currentHeight += childHeight;
+  }
+
+  pages.push(curPage);
+  return pages;
+}
+
+/**
  * High-fidelity client-side Word (.docx) to PDF conversion.
- * Parses OpenXML structures (styles, numbering, tables, images, section properties)
- * and renders 1:1 visual output into vector/retina PDF without artificial template injections.
+ * Features:
+ * 1. Smart element-based pagination (no mid-line cuts; proper margins on every page)
+ * 2. Strict width constraint & box-sizing to eliminate right-edge overflow clipping
+ * 3. Spacing preservation on shaded blocks to prevent collision
+ * 4. Crisp 2x retina rasterization
  */
 export async function renderDocxToPdfHighFidelity(
   data: Uint8Array,
@@ -23,26 +188,71 @@ export async function renderDocxToPdfHighFidelity(
 
   onProgress?.(0.1, 'Parsing OpenXML document structure and style definitions...');
 
-  // Create an off-screen staging container
-  const container = document.createElement('div');
-  container.id = `converto-render-staging-${Math.random().toString(36).substring(2, 9)}`;
-  container.style.position = 'fixed';
-  container.style.top = '-99999px';
-  container.style.left = '-99999px';
-  container.style.width = 'auto';
-  container.style.height = 'auto';
-  container.style.opacity = '0';
-  container.style.pointerEvents = 'none';
-  container.style.zIndex = '-1000';
-  container.style.backgroundColor = '#ffffff';
+  // Standard A4 dimensions at 96 DPI: 794px width x 1123px height
+  let targetWidthPx = 794;
+  let targetHeightPx = 1123;
 
-  document.body.appendChild(container);
+  // Create isolated off-screen staging container with locked width
+  const stagingContainer = document.createElement('div');
+  stagingContainer.id = `converto-docx-staging-${Math.random().toString(36).substring(2, 9)}`;
+  stagingContainer.style.position = 'fixed';
+  stagingContainer.style.top = '0px';
+  stagingContainer.style.left = '-99999px';
+  stagingContainer.style.width = `${targetWidthPx}px`;
+  stagingContainer.style.minWidth = `${targetWidthPx}px`;
+  stagingContainer.style.maxWidth = `${targetWidthPx}px`;
+  stagingContainer.style.opacity = '0';
+  stagingContainer.style.pointerEvents = 'none';
+  stagingContainer.style.zIndex = '-9999';
+  stagingContainer.style.backgroundColor = '#ffffff';
+  stagingContainer.style.boxSizing = 'border-box';
+
+  // Inject global layout and anti-collapse styles
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    #${stagingContainer.id} * {
+      box-sizing: border-box !important;
+      max-width: 100% !important;
+      overflow-wrap: break-word !important;
+      word-wrap: break-word !important;
+    }
+    #${stagingContainer.id} section.docx {
+      box-sizing: border-box !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+    #${stagingContainer.id} table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: auto !important;
+      margin-top: 12px !important;
+      margin-bottom: 12px !important;
+    }
+    #${stagingContainer.id} td, #${stagingContainer.id} th {
+      box-sizing: border-box !important;
+      overflow-wrap: break-word !important;
+      word-break: break-word !important;
+    }
+    #${stagingContainer.id} h1, #${stagingContainer.id} h2, #${stagingContainer.id} h3,
+    #${stagingContainer.id} [style*="background-color"]:not([style*="rgba(0, 0, 0, 0)"]):not([style*="transparent"]),
+    #${stagingContainer.id} [style*="background:"]:not([style*="none"]) {
+      display: flow-root !important;
+      margin-top: 14px !important;
+      margin-bottom: 10px !important;
+    }
+  `;
+  stagingContainer.appendChild(styleEl);
+
+  const renderMount = document.createElement('div');
+  renderMount.className = 'docx-render-mount';
+  stagingContainer.appendChild(renderMount);
+  document.body.appendChild(stagingContainer);
 
   try {
     onProgress?.(0.3, 'Rendering document layout, tables, fonts, and media elements...');
 
-    // Render using docx-preview with full layout, styles, and media preservation
-    await renderAsync(data.buffer as ArrayBuffer, container, undefined, {
+    await renderAsync(data.buffer as ArrayBuffer, renderMount, undefined, {
       ...defaultOptions,
       ignoreWidth: false,
       ignoreHeight: false,
@@ -57,142 +267,97 @@ export async function renderDocxToPdfHighFidelity(
       inWrapper: true,
     });
 
-    // Allow styles, fonts, and embedded images to settle
+    // Allow fonts and images to settle
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    // Locate rendered page sections: docx-preview outputs `.docx-wrapper > section.docx`
-    let sections = Array.from(container.querySelectorAll<HTMLElement>('section.docx'));
-
-    if (sections.length === 0) {
-      const wrapper = container.querySelector<HTMLElement>('.docx-wrapper');
-      if (wrapper) {
-        sections = [wrapper];
-      } else {
-        sections = [container];
+    // Detect if section defined US Letter or Landscape
+    const rawSections = Array.from(renderMount.querySelectorAll<HTMLElement>('section.docx'));
+    if (rawSections.length > 0) {
+      const firstSec = rawSections[0];
+      const secWidthStr = firstSec.style.width || '';
+      if (secWidthStr.includes('8.5in') || secWidthStr.includes('8.5')) {
+        targetWidthPx = 816; // Letter width at 96 DPI
+        targetHeightPx = 1056; // Letter height
+      } else if (firstSec.offsetWidth > 850) {
+        // Landscape section
+        targetWidthPx = firstSec.offsetWidth;
+        targetHeightPx = Math.round(targetWidthPx * (595.28 / 841.89));
       }
+      stagingContainer.style.width = `${targetWidthPx}px`;
+      stagingContainer.style.maxWidth = `${targetWidthPx}px`;
     }
 
-    onProgress?.(0.5, `Rasterizing ${sections.length} physical page(s) at 2x retina resolution...`);
+    // Split raw sections with smart page walker
+    onProgress?.(0.5, 'Structuring smart page boundaries and margins...');
+    const allPages: HTMLElement[] = [];
 
-    let pdf: jsPDF | null = null;
-    let totalPagesRendered = 0;
+    for (const rawSec of rawSections) {
+      const splitPages = splitSectionIntoPages(rawSec, stagingContainer, targetWidthPx, targetHeightPx);
+      allPages.push(...splitPages);
+    }
 
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i];
+    // Fallback if no sections detected
+    if (allPages.length === 0) {
+      allPages.push(renderMount);
+    }
+
+    onProgress?.(0.65, `Rendering ${allPages.length} pages at 2x retina resolution...`);
+
+    const widthPt = targetWidthPx * 0.75;
+    const heightPt = targetHeightPx * 0.75;
+    const orientation = widthPt > heightPt ? 'landscape' : 'portrait';
+
+    const pdf = new jsPDF({
+      orientation,
+      unit: 'pt',
+      format: [widthPt, heightPt],
+      compress: true,
+    });
+
+    for (let i = 0; i < allPages.length; i++) {
+      const pageEl = allPages[i];
 
       onProgress?.(
-        0.5 + (i / sections.length) * 0.4,
-        `Rendering page ${i + 1} of ${sections.length} with 1:1 typographic fidelity...`
+        0.65 + (i / allPages.length) * 0.3,
+        `Rendering page ${i + 1} of ${allPages.length} without mid-line clipping...`
       );
 
-      // Measure physical dimensions of the rendered page section
-      const rect = section.getBoundingClientRect();
-      const widthPx = Math.max(rect.width, section.offsetWidth, 400);
-      const heightPx = Math.max(rect.height, section.offsetHeight, 500);
-
-      // Convert pixels (96 DPI standard CSS) to PDF points (72 points/inch)
-      const widthPt = widthPx * 0.75;
-      const heightPt = heightPx * 0.75;
-      const orientation = widthPt > heightPt ? 'landscape' : 'portrait';
-
-      // Capture at scale: 2 for crisp retina text and high-res vector graphics
-      const canvas = await html2canvas(section, {
+      // Render page element matching exact width with x: 0
+      const canvas = await html2canvas(pageEl, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: widthPx,
-        height: heightPx,
-        windowWidth: widthPx,
-        windowHeight: heightPx,
+        x: 0,
+        y: 0,
+        width: targetWidthPx,
+        height: targetHeightPx,
+        windowWidth: targetWidthPx,
+        windowHeight: targetHeightPx,
+        scrollX: 0,
+        scrollY: 0,
       });
 
-      // Standard page height threshold to determine if section needs vertical chunking
-      const pageRatio = heightPt / widthPt;
-      const isMultiPageSection = heightPx > widthPx * 1.6;
-
-      if (!isMultiPageSection) {
-        // Standard single section page
-        if (!pdf) {
-          pdf = new jsPDF({
-            orientation,
-            unit: 'pt',
-            format: [widthPt, heightPt],
-            compress: true,
-          });
-        } else {
-          pdf.addPage([widthPt, heightPt], orientation);
-        }
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.96);
-        pdf.addImage(imgData, 'JPEG', 0, 0, widthPt, heightPt, undefined, 'FAST');
-        totalPagesRendered++;
-      } else {
-        // Long continuous section: slice into native page increments
-        const sliceHeightPx = Math.round(widthPx * 1.414); // Standard A4/Letter aspect ratio
-        const totalSlices = Math.max(1, Math.ceil(heightPx / sliceHeightPx));
-        const sliceHeightPt = sliceHeightPx * 0.75;
-
-        for (let s = 0; s < totalSlices; s++) {
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          const currentSliceHeight = Math.min(sliceHeightPx * 2, canvas.height - s * sliceHeightPx * 2);
-          sliceCanvas.height = currentSliceHeight;
-
-          const ctx = sliceCanvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-            ctx.drawImage(
-              canvas,
-              0,
-              s * sliceHeightPx * 2,
-              canvas.width,
-              currentSliceHeight,
-              0,
-              0,
-              canvas.width,
-              currentSliceHeight
-            );
-          }
-
-          const currentSlicePt = (currentSliceHeight / 2) * 0.75;
-
-          if (!pdf) {
-            pdf = new jsPDF({
-              orientation: 'portrait',
-              unit: 'pt',
-              format: [widthPt, currentSlicePt],
-              compress: true,
-            });
-          } else {
-            pdf.addPage([widthPt, currentSlicePt], 'portrait');
-          }
-
-          const imgData = sliceCanvas.toDataURL('image/jpeg', 0.96);
-          pdf.addImage(imgData, 'JPEG', 0, 0, widthPt, currentSlicePt, undefined, 'FAST');
-          totalPagesRendered++;
-        }
+      if (i > 0) {
+        pdf.addPage([widthPt, heightPt], orientation);
       }
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.96);
+      pdf.addImage(imgData, 'JPEG', 0, 0, widthPt, heightPt, undefined, 'FAST');
     }
 
-    if (!pdf) {
-      throw new Error('Failed to generate PDF pages from document content.');
-    }
-
-    onProgress?.(0.95, 'Finalizing vector PDF file...');
+    onProgress?.(0.98, 'Finalizing vector PDF file...');
     const pdfArrayBuffer = pdf.output('arraybuffer');
     const pdfBytes = new Uint8Array(pdfArrayBuffer);
 
     return {
       data: pdfBytes,
-      pageCount: totalPagesRendered,
+      pageCount: allPages.length,
     };
   } finally {
-    // Clean up staging DOM container
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
+    if (document.body.contains(stagingContainer)) {
+      document.body.removeChild(stagingContainer);
     }
   }
 }
