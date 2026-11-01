@@ -646,7 +646,8 @@ export async function executeTool(
 
     case 'pdf-to-markdown': {
       const target = files[0];
-      const res = await convertPdfToMarkdown(target.data, target.name, undefined, ctx);
+      const rawText = extractRawTextFromPdfBuffer(target.data);
+      const res = await convertPdfToMarkdown(target.data, target.name, rawText, ctx);
       const bytes = new TextEncoder().encode(res.markdown);
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
@@ -660,7 +661,7 @@ export async function executeTool(
 
       return {
         files: [outputFile],
-        summary: `Extracted ${res.wordCount} words from ${res.pageCount} pages into clean Markdown.`,
+        summary: `Extracted ${res.wordCount} words from ${res.pageCount} pages into clean Markdown without modifying content.`,
         suggestedNext: ['ai-summarizer'],
         metrics: { originalSize, finalSize: outputFile.size, pageCount: res.pageCount, durationMs: Date.now() - startTime },
       };
@@ -668,7 +669,8 @@ export async function executeTool(
 
     case 'pdf-to-word': {
       const target = files[0];
-      const res = await convertPdfToWord(target.data, target.name, undefined, ctx);
+      const rawText = extractRawTextFromPdfBuffer(target.data);
+      const res = await convertPdfToWord(target.data, target.name, rawText, ctx);
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: `${target.name.replace(/\.pdf$/i, '')}.docx`,
@@ -686,7 +688,8 @@ export async function executeTool(
 
     case 'pdf-to-excel': {
       const target = files[0];
-      const res = await convertPdfToExcel(target.data, target.name, undefined, ctx);
+      const rawText = extractRawTextFromPdfBuffer(target.data);
+      const res = await convertPdfToExcel(target.data, target.name, rawText, ctx);
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: `${target.name.replace(/\.pdf$/i, '')}.csv`,
@@ -704,7 +707,8 @@ export async function executeTool(
 
     case 'pdf-to-powerpoint': {
       const target = files[0];
-      const res = await convertPdfToPowerpoint(target.data, target.name, undefined, ctx);
+      const rawText = extractRawTextFromPdfBuffer(target.data);
+      const res = await convertPdfToPowerpoint(target.data, target.name, rawText, ctx);
       const outputFile: WorkspaceFile = {
         id: Math.random().toString(36).substring(2, 9),
         name: `${target.name.replace(/\.pdf$/i, '')}.pptx`,
@@ -713,6 +717,12 @@ export async function executeTool(
         lastModified: Date.now(),
         data: res.data,
       };
+      return {
+        files: [outputFile],
+        summary: res.summary,
+        metrics: { originalSize, finalSize: outputFile.size, pageCount: 1, durationMs: Date.now() - startTime },
+      };
+    }
       return {
         files: [outputFile],
         summary: res.summary,

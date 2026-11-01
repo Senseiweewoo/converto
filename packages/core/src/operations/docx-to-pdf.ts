@@ -116,18 +116,6 @@ export async function convertDocxToPdf(
   let page = doc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
 
-  const docTitle = filename.replace(/\.(docx|doc)$/i, '');
-
-  // Render Document Header
-  page.drawText(docTitle, {
-    x: margin,
-    y,
-    size: 20,
-    font: fontBold,
-    color: rgb(0.05, 0.58, 0.41), // Converto Emerald
-  });
-  y -= 32;
-
   // Helper to flow text with automatic wrapping and pagination
   const drawWrappedText = (
     text: string,
@@ -212,23 +200,8 @@ export async function convertDocxToPdf(
     }
   }
 
-  // Draw Page numbers on all pages
-  const totalPages = doc.getPageCount();
-  const allPages = doc.getPages();
-  for (let i = 0; i < totalPages; i++) {
-    const p = allPages[i];
-    const pageNumStr = `Page ${i + 1} of ${totalPages}`;
-    const numWidth = fontRegular.widthOfTextAtSize(pageNumStr, 9);
-    p.drawText(pageNumStr, {
-      x: (pageWidth - numWidth) / 2,
-      y: margin / 2,
-      size: 9,
-      font: fontRegular,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-  }
-
   ctx?.onProgress?.(0.9, 'Finalizing vector PDF file...');
+  const totalPages = doc.getPageCount();
   const pdfBytes = await doc.save({ useObjectStreams: true });
 
   return {

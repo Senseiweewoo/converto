@@ -103,18 +103,6 @@ export async function convertXlsxToPdf(
   let page = doc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
 
-  const docTitle = filename.replace(/\.(xlsx|xls|csv)$/i, '');
-
-  // Document Title
-  page.drawText(docTitle, {
-    x: margin,
-    y,
-    size: 16,
-    font: fontBold,
-    color: rgb(0.05, 0.58, 0.41),
-  });
-  y -= 26;
-
   // Determine column count and widths
   const maxCols = Math.max(1, ...rows.map((r) => r.length));
   const colWidth = Math.min(180, contentWidth / maxCols);
@@ -155,7 +143,7 @@ export async function convertXlsxToPdf(
     for (let cIdx = 0; cIdx < row.length; cIdx++) {
       const cellText = String(row[cIdx] || '').substring(0, 35);
       const font = isHeader ? fontBold : fontRegular;
-      const color = isHeader ? rgb(0.05, 0.35, 0.25) : rgb(0.15, 0.15, 0.15);
+      const color = rgb(0.12, 0.14, 0.17);
 
       page.drawText(cellText, {
         x: margin + cIdx * colWidth + 4,
@@ -177,22 +165,8 @@ export async function convertXlsxToPdf(
     y -= rowHeight;
   }
 
-  // Draw Page numbers
-  const totalPages = doc.getPageCount();
-  const allPages = doc.getPages();
-  for (let i = 0; i < totalPages; i++) {
-    const p = allPages[i];
-    const pageNumStr = `Page ${i + 1} of ${totalPages}`;
-    p.drawText(pageNumStr, {
-      x: (pageWidth - fontRegular.widthOfTextAtSize(pageNumStr, 9)) / 2,
-      y: margin / 2,
-      size: 9,
-      font: fontRegular,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-  }
-
   ctx?.onProgress?.(0.9, 'Finalizing vector PDF file...');
+  const totalPages = doc.getPageCount();
   const pdfBytes = await doc.save({ useObjectStreams: true });
 
   return {

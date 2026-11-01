@@ -91,32 +91,25 @@ export async function convertPptxToPdf(
     const slide = slides[i];
     const page = doc.addPage([slideWidth, slideHeight]);
 
-    // Top decorative brand accent
-    page.drawRectangle({
-      x: 0,
-      y: slideHeight - 8,
-      width: slideWidth,
-      height: 8,
-      color: rgb(0.05, 0.58, 0.41), // Converto Emerald
-    });
+    let y = slideHeight - margin;
 
-    let y = slideHeight - margin - 20;
-
-    const titleText = slide.texts[0] || `Slide ${slide.slideNumber}`;
-    page.drawText(titleText, {
-      x: margin,
-      y,
-      size: 24,
-      font: fontBold,
-      color: rgb(0.1, 0.12, 0.16),
-    });
-    y -= 40;
+    const titleText = slide.texts[0];
+    if (titleText) {
+      page.drawText(titleText, {
+        x: margin,
+        y,
+        size: 24,
+        font: fontBold,
+        color: rgb(0.1, 0.12, 0.16),
+      });
+      y -= 40;
+    }
 
     // Slide Body Items
-    const bodyItems = slide.texts.slice(1);
+    const bodyItems = slide.texts.slice(titleText ? 1 : 0);
     for (const item of bodyItems) {
-      page.drawText(`•  ${item}`, {
-        x: margin + 15,
+      page.drawText(item, {
+        x: margin,
         y,
         size: 14,
         font: fontRegular,
@@ -125,16 +118,6 @@ export async function convertPptxToPdf(
       y -= 26;
       if (y < margin + 30) break;
     }
-
-    // Slide number badge
-    const badgeText = `${i + 1} / ${slides.length}`;
-    page.drawText(badgeText, {
-      x: slideWidth - margin - 40,
-      y: margin / 2,
-      size: 10,
-      font: fontRegular,
-      color: rgb(0.6, 0.6, 0.6),
-    });
   }
 
   ctx?.onProgress?.(0.9, 'Finalizing slide deck PDF...');

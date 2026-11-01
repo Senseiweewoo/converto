@@ -1,4 +1,5 @@
 import { safeLoadPdf } from '../utils/pdf-loader';
+import { extractRawTextFromPdfBuffer } from './ocr-pdf';
 import { RunContext } from '../types';
 
 export interface PdfToMarkdownResult {
@@ -15,24 +16,23 @@ export async function convertPdfToMarkdown(
 ): Promise<PdfToMarkdownResult> {
   const doc = await safeLoadPdf(data);
   const total = doc.getPageCount();
-  const title = doc.getTitle() || filename.replace(/\.pdf$/i, '');
 
-  ctx?.onProgress?.(0.3, 'Parsing document text flow and hierarchy...');
+  ctx?.onProgress?.(0.3, 'Parsing document text flow and structure...');
 
-  let content = rawText || '';
-  if (!content.trim()) {
-    // Basic fallback representation if no text layer passed
-    content = `*Document contains ${total} pages. Title: ${title}*`;
+  let content = rawText;
+  if (!content || !content.trim()) {
+    content = extractRawTextFromPdfBuffer(data);
   }
 
-  ctx?.onProgress?.(0.6, 'Structuring Markdown headers, lists, and tables...');
+  if (!content.trim()) {
+    content = '';
+  }
 
-  // Convert common document patterns into Markdown
+  ctx?.onProgress?.(0.6, 'Structuring clean Markdown syntax...');
+
+  // Convert document lines into clean Markdown preserving structure without injected headers
   const lines = content.split('\n');
   const markdownLines: string[] = [];
-
-  markdownLines.push(`# ${title}\n`);
-  markdownLines.push(`> Converted with Converto Private PDF Engine &bull; ${total} Pages\n`);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -41,12 +41,10 @@ export async function convertPdfToMarkdown(
       continue;
     }
 
-    // Header heuristics
+    // Preserve natural headings and lists without adding artificial content
     if (/^(CHAPTER|SECTION|ARTICLE)\s+[0-9IVX]+/i.test(line)) {
       markdownLines.push(`\n## ${line}\n`);
     } else if (/^[0-9]+\.[0-9]+(\.[0-9]+)?\s+[A-Z]/.test(line)) {
-      markdownLines.push(`\n### ${line}\n`);
-    } else if (/^([A-Z\s]{4,40})$/.test(line) && line.length > 5) {
       markdownLines.push(`\n### ${line}\n`);
     } else if (/^[-*•]\s+/.test(line)) {
       markdownLines.push(`- ${line.replace(/^[-*•]\s+/, '')}`);
@@ -60,7 +58,7 @@ export async function convertPdfToMarkdown(
     }
   }
 
-  const markdown = markdownLines.join('\n');
+  const markdown = markdownLines.join('\n').trim();
   const wordCount = markdown.split(/\s+/).filter(Boolean).length;
 
   return {
