@@ -723,12 +723,6 @@ export async function executeTool(
         metrics: { originalSize, finalSize: outputFile.size, pageCount: 1, durationMs: Date.now() - startTime },
       };
     }
-      return {
-        files: [outputFile],
-        summary: res.summary,
-        metrics: { originalSize, finalSize: outputFile.size, pageCount: 1, durationMs: Date.now() - startTime },
-      };
-    }
 
     case 'word-to-pdf': {
       const target = files[0];
